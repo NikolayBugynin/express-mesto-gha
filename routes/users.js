@@ -4,7 +4,7 @@ const {
   getUsers,
   getUser,
   createUser,
-  updateUser,
+  updateProfile,
   updateAvatar,
 } = require('../controllers/users');
 
@@ -18,7 +18,7 @@ router.get('/:userId', getUser);
 router.post('/', createUser);
 
 // обновляет данные пользователя
-router.patch('/me', updateUser);
+router.patch('/me', updateProfile);
 
 // обновляет аватар
 router.patch('/me/avatar', updateAvatar);
