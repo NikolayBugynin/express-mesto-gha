@@ -4,13 +4,7 @@ const Card = require('../models/card');
 
 const errors = require('../errors/errors');
 
-// const ERROR_CODE_VALIDATION = 400;
-
-// const ERROR_CODE_NOT_FOUND = 404;
-
-// const ERROR_CODE_SERVER = 500;
-
-// const STATUS_CODE_OBJECT_CREATED = 201;
+const STATUS_CODE_OBJECT_CREATED = 201;
 
 module.exports.getCards = (req, res) => {
   Card.find({})
@@ -28,7 +22,7 @@ module.exports.createCard = (req, res) => {
   const { name, link } = req.body;
   const owner = req.user._id;
   Card.create({ name, link, owner })
-    .then((card) => res.status(errors.OK).send(card))
+    .then((card) => res.status(STATUS_CODE_OBJECT_CREATED).send(card))
     .catch((err) => {
       if (err.name === 'ValidationError') {
         res.status(errors.BAD_REQUEST).send({ message: err.message });

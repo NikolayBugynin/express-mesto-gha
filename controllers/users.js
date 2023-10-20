@@ -4,6 +4,8 @@ const User = require('../models/user');
 const INVALID_USER_ID_ERROR = 'Некорректный идентификатор пользователя';
 const INTERNAL_SERVER_ERROR_MESSAGE = 'Внутренняя ошибка сервера';
 
+const STATUS_CODE_OBJECT_CREATED = 201;
+
 module.exports.getUsers = (req, res) => {
   User.find({})
     .then((users) => res.send(users))
@@ -29,7 +31,7 @@ module.exports.getUser = (req, res) => {
 module.exports.createUser = (req, res) => {
   const { name, about, avatar } = req.body;
   User.create({ name, about, avatar })
-    .then((user) => res.send(user))
+    .then((user) => res.status(STATUS_CODE_OBJECT_CREATED).send(user))
     .catch((err) => {
       if (err.name === 'ValidationError') {
         res.status(BAD_REQUEST).send({ message: err.message });
