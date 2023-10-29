@@ -3,24 +3,21 @@ const router = require('express').Router();
 const {
   getUsers,
   getUser,
-  createUser,
   updateProfile,
   updateAvatar,
+  getCurrentUser,
 } = require('../controllers/users');
+const {
+  validationUserId,
+  validationUpdateProfile,
+  validationUpdateAvatar,
+} = require('../validation/validation');
 
-// возвращает всех пользователей
+// защищенные маршруты
 router.get('/', getUsers);
-
-// возвращает пользователя по _id
-router.get('/:userId', getUser);
-
-// создает пользователя
-router.post('/', createUser);
-
-// обновляет данные пользователя
-router.patch('/me', updateProfile);
-
-// обновляет аватар
-router.patch('/me/avatar', updateAvatar);
+router.get('/me', getCurrentUser);
+router.get('/:userId', validationUserId, getUser);
+router.patch('/me', validationUpdateProfile, updateProfile);
+router.patch('/me/avatar', validationUpdateAvatar, updateAvatar);
 
 module.exports = router;

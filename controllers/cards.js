@@ -1,90 +1,85 @@
 const mongoose = require('mongoose');
-
 const Card = require('../models/card');
-
-const errors = require('../errors/errors');
+const BadRequest = require('../errors/BadRequest');
+const NotFoundError = require('../errors/NotFoundError');
+const ForbiddenError = require('../errors/ForbiddenError');
 
 const STATUS_CODE_OBJECT_CREATED = 201;
 
-module.exports.getCards = (req, res) => {
+module.exports.getCards = (_, res, next) => {
   Card.find({})
-    .populate('owner')
-    .populate('likes')
-    .then((cards) => {
-      res.send(cards);
-    })
-    .catch((err) => {
-      res.status(errors.INTERNAL_SERVER_ERROR).send({ message: err.message });
-    });
+    .populate(['owner', 'likes'])
+    .then((cards) => res.json(cards))
+    .catch((error) => next(error));
 };
 
-module.exports.createCard = (req, res) => {
+module.exports.createCard = (req, res, next) => {
   const { name, link } = req.body;
   const owner = req.user._id;
+
   Card.create({ name, link, owner })
     .then((card) => res.status(STATUS_CODE_OBJECT_CREATED).send(card))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(errors.BAD_REQUEST).send({ message: err.message });
-      } else {
-        res.status(errors.INTERNAL_SERVER_ERROR).send({ message: err.message });
+        return next(new BadRequest('Переданы некорректные данные'));
       }
+      return next(err);
     });
 };
 
-module.exports.deleteCard = (req, res) => {
+module.exports.deleteCard = (req, res, next) => {
   const { cardId } = req.params;
   if (!mongoose.Types.ObjectId.isValid(cardId)) {
-    return res.status(errors.BAD_REQUEST).send({ message: 'Некорректный формат id карточки' });
+    return next(new BadRequest('Некорректный формат id карточки'));
   }
-  Card.findByIdAndRemove(cardId)
+  Card.findById(cardId)
     .then((card) => {
       if (!card) {
-        return res.status(errors.NOT_FOUND).send({ message: 'Карточка не найдена' });
+        return next(new NotFoundError('Карточка не найдена'));
       }
-      return res.status(errors.OK).send({ message: 'Карточка успешно удалена', card });
+      if (card.owner.toString() !== req.user._id) {
+        return next(new ForbiddenError('Чужую карточку удалить нельзя'));
+      }
+      return Card.findByIdAndRemove(cardId)
+        .then((deletedCard) => res.status(200).json({
+          message: 'Карточка успешно удалена',
+          deletedCard,
+        }));
     })
-    .catch((err) => {
-      res.status(errors.INTERNAL_SERVER_ERROR).send({ message: `Ошибка при удалении карточки: ${err}` });
-    });
-
-  return null;
+    .catch((error) => next(error));
+  return {};
 };
 
-module.exports.likeCard = (req, res) => {
+module.exports.likeCard = (req, res, next) => {
   Card.findByIdAndUpdate(
     req.params.cardId,
     { $addToSet: { likes: req.user._id } },
     { new: true },
   )
-    .populate('likes')
-    .then((card) => {
-      if (!card) {
-        return res.status(errors.NOT_FOUND).send({ message: 'Карточка не найдена' });
-      }
-
-      return res.status(errors.OK).send(card);
-    })
+    .orFail(() => { throw new NotFoundError('Карточка с указанным _id не найдена'); })
+    .then((card) => res.send(card))
     .catch((err) => {
-      res.status(errors.BAD_REQUEST).send({ message: err.message });
+      if (err.name === 'CastError') {
+        next(new BadRequest('Переданы некорректные данные'));
+      } else {
+        next(err);
+      }
     });
 };
 
-module.exports.dislikeCard = (req, res) => {
+module.exports.dislikeCard = (req, res, next) => {
   Card.findByIdAndUpdate(
     req.params.cardId,
     { $pull: { likes: req.user._id } },
     { new: true },
   )
-    .populate('likes')
-    .then((card) => {
-      if (!card) {
-        return res.status(errors.NOT_FOUND).send({ message: 'Карточка не найдена' });
-      }
-
-      return res.status(errors.OK).send(card);
-    })
+    .orFail(() => { throw new NotFoundError('Карточка с указанным _id не найдена'); })
+    .then((card) => res.send(card))
     .catch((err) => {
-      res.status(errors.BAD_REQUEST).send({ message: err.message });
+      if (err.name === 'CastError') {
+        next(new BadRequest('Переданы некорректные данные'));
+      } else {
+        next(err);
+      }
     });
 };
