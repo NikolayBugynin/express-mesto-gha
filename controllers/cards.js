@@ -40,7 +40,7 @@ module.exports.deleteCard = (req, res, next) => {
       if (card.owner.toString() !== req.user._id) {
         return next(new ForbiddenError('Чужую карточку удалить нельзя'));
       }
-      return Card.findByIdAndRemove(cardId)
+      return Card.deleteOne(card)
         .then((deletedCard) => res.status(200).json({
           message: 'Карточка успешно удалена',
           deletedCard,
